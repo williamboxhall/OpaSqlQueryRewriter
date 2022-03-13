@@ -45,6 +45,7 @@ import net.sf.jsqlparser.statement.select.PlainSelect
 import net.sf.jsqlparser.statement.select.Select
 import net.sf.jsqlparser.statement.select.SelectVisitor
 import net.sf.jsqlparser.statement.select.SetOperationList
+import net.sf.jsqlparser.statement.select.SubSelect
 import net.sf.jsqlparser.statement.select.WithItem
 import net.sf.jsqlparser.statement.show.ShowTablesStatement
 import net.sf.jsqlparser.statement.truncate.Truncate
@@ -55,30 +56,39 @@ import net.sf.jsqlparser.statement.values.ValuesStatement
 class OpaSqlQueryRewriter {
     fun rewrite(sql: String, tableToWhereClause: Map<String, Pair<String, String>>): String {
         val queryAst = CCJSqlParserUtil.parse(sql)
-        queryAst.accept(object : NoopStatementVisitor {
+        val policyWhereClauseAddingVisitor = object : NoopStatementVisitor {
             override fun visit(select: Select?) {
-                select?.selectBody?.accept(object : SelectVisitor {
+                val selectVisitor = object : SelectVisitor {
                     override fun visit(plainSelect: PlainSelect?) {
-                        val table = plainSelect?.fromItem
-                        val (column, value) = tableToWhereClause.getValue((table as Table).name)
-                        val policyExpression = EqualsTo(Column(table, column), StringValue(value))
-                        val where = if (plainSelect.where == null) {
-                            policyExpression
-                        } else {
-                            AndExpression(plainSelect.where, policyExpression)
+                        updateSelect(plainSelect, tableToWhereClause)
+                        plainSelect?.joins?.forEach { join ->
+                            visit(((join.rightItem as SubSelect).selectBody as PlainSelect)) // TODO will casts cause an issue?
                         }
-                        plainSelect.withWhere(where)
                         Unit
                     }
 
                     override fun visit(setOpList: SetOperationList?) = Unit
                     override fun visit(withItem: WithItem?) = Unit
                     override fun visit(aThis: ValuesStatement?) = Unit
-                })
-                return Unit
+                }
+                select?.selectBody?.accept(selectVisitor)
+                return
             }
-        })
+        }
+        queryAst.accept(policyWhereClauseAddingVisitor)
         return queryAst.toString()
+    }
+
+    private fun updateSelect(plainSelect: PlainSelect?, tableToWhereClause: Map<String, Pair<String, String>>) {
+        val table = plainSelect?.fromItem
+        val (column, value) = tableToWhereClause.getValue((table as Table).name) // TODO will cast cause issue?
+        val policyExpression = EqualsTo(Column(table, column), StringValue(value))
+        val where = if (plainSelect.where == null) {
+            policyExpression
+        } else {
+            AndExpression(plainSelect.where, policyExpression)
+        }
+        plainSelect.withWhere(where)
     }
 }
 
@@ -116,106 +126,106 @@ interface NoopStatementVisitor : StatementVisitor {
     override fun visit(alter: Alter?) = Unit
 
     override fun visit(stmts: Statements?) {
-        return Unit
+        return
     }
 
     override fun visit(execute: Execute?) {
-        return Unit
+        return
     }
 
     override fun visit(set: SetStatement?) {
-        return Unit
+        return
     }
 
     override fun visit(reset: ResetStatement?) {
-        return Unit
+        return
     }
 
     override fun visit(set: ShowColumnsStatement?) {
-        return Unit
+        return
     }
 
     override fun visit(showTables: ShowTablesStatement?) {
-        return Unit
+        return
     }
 
     override fun visit(merge: Merge?) {
-        return Unit
+        return
     }
 
     override fun visit(select: Select?) {
-        return Unit
+        return
     }
 
     override fun visit(upsert: Upsert?) {
-        return Unit
+        return
     }
 
     override fun visit(use: UseStatement?) {
-        return Unit
+        return
     }
 
     override fun visit(block: Block?) {
-        return Unit
+        return
     }
 
     override fun visit(values: ValuesStatement?) {
-        return Unit
+        return
     }
 
     override fun visit(describe: DescribeStatement?) {
-        return Unit
+        return
     }
 
     override fun visit(aThis: ExplainStatement?) {
-        return Unit
+        return
     }
 
     override fun visit(aThis: ShowStatement?) {
-        return Unit
+        return
     }
 
     override fun visit(aThis: DeclareStatement?) {
-        return Unit
+        return
     }
 
     override fun visit(grant: Grant?) {
-        return Unit
+        return
     }
 
     override fun visit(createSequence: CreateSequence?) {
-        return Unit
+        return
     }
 
     override fun visit(alterSequence: AlterSequence?) {
-        return Unit
+        return
     }
 
     override fun visit(createFunctionalStatement: CreateFunctionalStatement?) {
-        return Unit
+        return
     }
 
     override fun visit(createSynonym: CreateSynonym?) {
-        return Unit
+        return
     }
 
     override fun visit(alterSession: AlterSession?) {
-        return Unit
+        return
     }
 
     override fun visit(aThis: IfElseStatement?) {
-        return Unit
+        return
     }
 
     override fun visit(renameTableStatement: RenameTableStatement?) {
-        return Unit
+        return
     }
 
     override fun visit(purgeStatement: PurgeStatement?) {
-        return Unit
+        return
     }
 
     override fun visit(alterSystemStatement: AlterSystemStatement?) {
-        return Unit
+        return
     }
 }

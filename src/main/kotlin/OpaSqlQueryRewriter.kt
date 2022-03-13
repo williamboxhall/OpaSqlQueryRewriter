@@ -62,7 +62,22 @@ class OpaSqlQueryRewriter {
                     override fun visit(plainSelect: PlainSelect?) {
                         updateSelect(plainSelect, tableToWhereClause)
                         plainSelect?.joins?.forEach { join ->
-                            visit(((join.rightItem as SubSelect).selectBody as PlainSelect)) // TODO will casts cause an issue?
+                            val rightItem = join.rightItem
+                            when (rightItem) {
+                                is Table -> {
+                                    val (column, value) = tableToWhereClause.getValue(rightItem.name)
+                                    val policyExpression = EqualsTo(Column(rightItem, column), StringValue(value))
+                                    val where = if (plainSelect.where == null) {
+                                        policyExpression
+                                    } else {
+                                        AndExpression(plainSelect.where, policyExpression)
+                                    }
+                                    plainSelect.withWhere(where)
+                                }
+                                is SubSelect -> {
+                                    visit((rightItem.selectBody as PlainSelect)) // TODO will casts cause an issue?
+                                }
+                            }
                         }
                         Unit
                     }

@@ -38,4 +38,13 @@ internal class OpaSqlQueryRewriterTest {
             rewriter.rewrite(nestedSelect, mapOf("admin_report_impact_projection" to ("account" to "456")))
         )
     }
+
+    @Test
+    fun `rewrite can also filter joined tables`() {
+        val joinQuery = "select * from users join subscriptions on (users.userid = subscriptions.userid)"
+        assertEquals(
+            "SELECT * FROM users JOIN subscriptions ON (users.userid = subscriptions.userid) WHERE users.account = '456' AND subscriptions.owner = '789'",
+            rewriter.rewrite(joinQuery, mapOf("users" to ("account" to "456"), "subscriptions" to ("owner" to "789")))
+        )
+    }
 }

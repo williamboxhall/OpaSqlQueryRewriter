@@ -11,7 +11,7 @@ internal class OpaPartialEvalToGenericPolicyClauseConverterTest {
             pet = data.pets[_];
             pet.owner = "alice"
         """.trimIndent()
-        assertEquals(mapOf("pet" to listOf(("owner" to "alice"))), converter.convert(basicResponse))
+        assertEquals(mapOf("pet" to listOf(listOf(("owner" to "alice")))), converter.convert(basicResponse))
     }
 
     @Test
@@ -22,6 +22,20 @@ internal class OpaPartialEvalToGenericPolicyClauseConverterTest {
             pet.owner = "alice";
             pet.name = "fluffy"
         """.trimIndent()
-        assertEquals(mapOf("pet" to listOf(("owner" to "alice"), ("name" to "fluffy"))), converter.convert(basicResponse))
+        assertEquals(mapOf("pet" to listOf(listOf(("owner" to "alice"), ("name" to "fluffy")))), converter.convert(basicResponse))
+    }
+
+    @Test
+    fun `can parse OR opa partial responses`() {
+        val basicResponse = """
+            # Query 1
+            pet = data.pets[_];
+            pet.owner = "alice"
+            
+            # Query 2
+            pet = data.pets[_];
+            pet.veterinarian = "alice"
+        """.trimIndent()
+        assertEquals(mapOf("pet" to listOf(listOf("owner" to "alice"), listOf("veterinarian" to "alice"))), converter.convert(basicResponse))
     }
 }
